@@ -39,22 +39,16 @@ using Test
     end
 
     @testset "raw (integration)" begin
-        # Linux (/etc/machine-id), Windows (registry), and macOS (ioreg) should
-        # always succeed on CI.
-        if Sys.iswindows() || Sys.islinux() || Sys.isapple()
-            id = MachineId.raw()
-            @test id isa String
-            @test !isempty(id)
-        end
+        id = MachineId.raw()
+        @test id isa String
+        @test !isempty(id)
     end
 
     @testset "protected (integration)" begin
-        if Sys.iswindows() || Sys.islinux() || Sys.isapple()
-            pid = MachineId.protected("MachineId.jl.test")
-            @test length(pid) == 64
-            @test occursin(r"^[0-9a-f]{64}$", pid)
-            @test pid == MachineId.protected("MachineId.jl.test")  # deterministic
-        end
+        pid = MachineId.protected("MachineId.jl.test")
+        @test length(pid) == 64
+        @test occursin(r"^[0-9a-f]{64}$", pid)
+        @test pid == MachineId.protected("MachineId.jl.test")  # deterministic
     end
 end
 
