@@ -1,7 +1,7 @@
-name = "Template"
-uuid = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+name = "MachineId"
+uuid = "0bde52d1-c59e-44da-81f1-8bd917b17165"
 version = "0.1.0"
-authors = ["aaaaaaaaaaaa"]
+authors = ["raphasampaio"]
 
 [deps]
 
