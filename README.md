@@ -6,7 +6,13 @@
 
 ## Introduction
 
-MachineId.jl is ...
+MachineId.jl returns a stable, unique identifier for the host machine, read from OS-native sources (no hardware fingerprinting):
+
+- **Linux:** `/var/lib/dbus/machine-id` or `/etc/machine-id` (with Docker fallbacks)
+- **Windows:** the `MachineGuid` registry value under `HKLM\SOFTWARE\Microsoft\Cryptography`
+- **macOS:** the `IOPlatformUUID` reported by `ioreg`
+
+It also provides `protected_id`, an app-scoped HMAC-SHA256 of the machine id, so you can identify a machine without ever exposing the raw id. This is a Julia portof the Go library [`keygen-sh/machineid`](https://github.com/keygen-sh/machineid).
 
 ## Getting Started
 
@@ -19,7 +25,16 @@ pkg> add MachineId
 ### Example
 
 ```julia
+using MachineId
+
+# The raw machine id (e.g. "23339b15-c1ee-4011-a1d3-88aab8a341d3")
+machine_id()
+
+# An app-scoped id that never exposes the raw machine id (64-char lowercase hex)
+protected_id("Corp.SomeApp")
 ```
+
+Both functions throw an `ErrorException` (message prefixed with `machineid: `) if the machine id cannot be determined.
 
 ## Contributing
 

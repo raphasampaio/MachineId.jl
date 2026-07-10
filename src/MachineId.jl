@@ -4,12 +4,6 @@ using SHA
 
 export machine_id, protected_id
 
-# Faithful transpilation of github.com/keygen-sh/machineid.
-# Public API is snake_case; internal helpers are prefixed with `_`.
-
-# Go's `trim` is `TrimSpace(Trim(s, "\n"))`; `strip` removes the same whitespace set.
-_trim(s::AbstractString) = strip(s)
-
 function _protect(app_id::AbstractString, id::AbstractString)
     # HMAC-SHA256 with KEY = machine id bytes, MESSAGE = app id bytes; lowercase hex.
     # Key must be a Vector{UInt8} (codeunits returns a read-only CodeUnits).
@@ -73,7 +67,7 @@ function _machine_id_linux()
         _cgroup,
         _mount_info,
     ))
-    return _trim(id)
+    return strip(id)
 end
 
 function _machine_id_apple()
@@ -82,7 +76,7 @@ function _machine_id_apple()
         if occursin("IOPlatformUUID", line)
             m = match(r"\"IOPlatformUUID\"\s*=\s*\"([^\"]+)\"", line)
             if m !== nothing
-                return _trim(m.captures[1])
+                return strip(m.captures[1])
             end
         end
     end
@@ -105,24 +99,13 @@ function _machine_id_windows()
     return error("could not read MachineGuid from registry")
 end
 
-function _machine_id_bsd()
-    id = _first_valid_value((
-        () -> _read_file("/etc/hostid"),
-        () -> read(`kenv -q smbios.system.uuid`, String),
-    ))
-    return _trim(id)
-end
-
 function _machine_id()
-    # Order matters: Sys.isbsd() is also true on Apple, so Apple is checked first.
     if Sys.iswindows()
         return _machine_id_windows()
     elseif Sys.isapple()
         return _machine_id_apple()
     elseif Sys.islinux()
         return _machine_id_linux()
-    elseif Sys.isbsd()
-        return _machine_id_bsd()
     else
         return error("unsupported platform")
     end

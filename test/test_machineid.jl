@@ -13,13 +13,6 @@ using Test
         @test occursin(r"^[0-9a-f]{64}$", got)
     end
 
-    @testset "trim" begin
-        @test MachineId._trim("  abc-123  \n") == "abc-123"
-        @test MachineId._trim("\n\t value \r\n") == "value"
-        @test MachineId._trim("plain") == "plain"
-        @test MachineId._trim("") == ""
-    end
-
     @testset "machine_id (integration)" begin
         # Linux (/etc/machine-id) and Windows (registry) should always succeed on CI.
         if Sys.iswindows() || Sys.islinux()
