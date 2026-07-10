@@ -4,17 +4,17 @@ using SHA
 
 export machine_id, protected_id
 
-function _protect(app_id::AbstractString, id::AbstractString)
+function protect(app_id::AbstractString, id::AbstractString)
     # HMAC-SHA256 with KEY = machine id bytes, MESSAGE = app id bytes; lowercase hex.
     # Key must be a Vector{UInt8} (codeunits returns a read-only CodeUnits).
     return bytes2hex(hmac_sha256(Vector{UInt8}(id), app_id))
 end
 
-# A missing/short read throws (IO / BoundsError) and is caught by the caller.
-_parse_cgroup(contents::AbstractString) = String(split(contents, "/")[3])
-_cgroup() = _parse_cgroup(read("/proc/self/cgroup", String))
+function parse_cgroup(contents::AbstractString) 
+return String(split(contents, "/")[3])
+end
 
-function _parse_mount_info(contents::AbstractString)
+function parse_mount_info(contents::AbstractString)
     if !occursin("docker", contents)
         return error("environment is not a docker container")
     end
@@ -24,16 +24,15 @@ function _parse_mount_info(contents::AbstractString)
     end
     return String(m.captures[1])
 end
-_mount_info() = _parse_mount_info(read("/proc/self/mountinfo", String))
 
-function _machine_id_linux()
+function machine_id_linux()
     # First source that yields a non-empty value wins; a source may throw or
     # return "" to signal "unavailable".
     for source in (
         () -> read("/var/lib/dbus/machine-id", String),
         () -> read("/etc/machine-id", String),
-        _cgroup,
-        _mount_info,
+        () -> parse_cgroup(read("/proc/self/cgroup", String)),
+        () -> parse_mount_info(read("/proc/self/mountinfo", String)),
     )
         try
             value = source()
@@ -46,7 +45,7 @@ function _machine_id_linux()
     return error("no machine-id found")
 end
 
-function _parse_apple(output::AbstractString)
+function parse_apple(output::AbstractString)
     for line in split(output, "\n")
         if occursin("IOPlatformUUID", line)
             m = match(r"\"IOPlatformUUID\"\s*=\s*\"([^\"]+)\"", line)
@@ -57,12 +56,15 @@ function _parse_apple(output::AbstractString)
     end
     return error("Failed to extract 'IOPlatformUUID' value from `ioreg` output.\n$output")
 end
-_machine_id_apple() = _parse_apple(read(`/usr/sbin/ioreg -rd1 -c IOPlatformExpertDevice`, String))
+
+function machine_id_apple() 
+    return parse_apple(read(`/usr/sbin/ioreg -rd1 -c IOPlatformExpertDevice`, String))
+end
 
 # Go reads the raw registry value (no trim); reg.exe output needs the column
 # padding / trailing CR stripped, which yields the identical canonical GUID.
 # "REG_SZ" and "MachineGuid" are not localized.
-function _parse_windows(output::AbstractString)
+function parse_windows(output::AbstractString)
     for line in split(output, "\n")
         if occursin("MachineGuid", line)
             parts = split(line, "REG_SZ")
@@ -73,9 +75,13 @@ function _parse_windows(output::AbstractString)
     end
     return error("could not read MachineGuid from registry")
 end
+
 # `/reg:64` mirrors WOW64_64KEY so we read the native 64-bit view of the key.
-_machine_id_windows() =
-    _parse_windows(read(`reg query "HKLM\SOFTWARE\Microsoft\Cryptography" /v MachineGuid /reg:64`, String))
+function machine_id_windows()
+    return parse_windows(
+        read(`reg query "HKLM\SOFTWARE\Microsoft\Cryptography" /v MachineGuid /reg:64`, String)
+    )
+end
 
 """
     machine_id() -> String
@@ -88,11 +94,11 @@ underlying OS/IO error).
 """
 function machine_id()
     @static if Sys.iswindows()
-        return String(_machine_id_windows())
+        return String(machine_id_windows())
     elseif Sys.isapple()
-        return String(_machine_id_apple())
+        return String(machine_id_apple())
     elseif Sys.islinux()
-        return String(_machine_id_linux())
+        return String(machine_id_linux())
     else
         return error("unsupported platform")
     end
@@ -106,7 +112,7 @@ Return an app-scoped, non-reversible machine id: the lowercase hex HMAC-SHA256 o
 [`machine_id`](@ref) so the raw machine id never leaves the machine.
 """
 function protected_id(app_id::AbstractString)
-    return _protect(app_id, machine_id())
+    return protect(app_id, machine_id())
 end
 
 end
