@@ -10,14 +10,6 @@ function _protect(app_id::AbstractString, id::AbstractString)
     return bytes2hex(hmac_sha256(Vector{UInt8}(id), app_id))
 end
 
-function _read_file(path::AbstractString)
-    contents = read(path, String)
-    if isempty(contents)
-        return error("file is empty")
-    end
-    return contents
-end
-
 # A missing/short read throws (IO / BoundsError) and is caught by the caller.
 _parse_cgroup(contents::AbstractString) = String(split(contents, "/")[3])
 _cgroup() = _parse_cgroup(read("/proc/self/cgroup", String))
@@ -38,14 +30,16 @@ function _machine_id_linux()
     # First source that yields a non-empty value wins; a source may throw or
     # return "" to signal "unavailable".
     for source in (
-        () -> _read_file("/var/lib/dbus/machine-id"),
-        () -> _read_file("/etc/machine-id"),
+        () -> read("/var/lib/dbus/machine-id", String),
+        () -> read("/etc/machine-id", String),
         _cgroup,
         _mount_info,
     )
         try
             value = source()
-            isempty(value) || return strip(value)
+            if !isempty(value) 
+                return strip(value)
+            end
         catch
         end
     end

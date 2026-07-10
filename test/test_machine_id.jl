@@ -36,16 +36,6 @@ using Test
         @test MachineId._parse_mount_info(mi) == "deadbeef0123"
         @test_throws ErrorException MachineId._parse_mount_info("plain mountinfo, no runtime")     # not docker
         @test_throws ErrorException MachineId._parse_mount_info("mentions docker, no hostname path")  # no regex match
-
-        # _read_file: non-empty returns contents, empty throws.
-        mktemp() do path, io
-            write(io, "hello")
-            flush(io)
-            @test MachineId._read_file(path) == "hello"
-        end
-        mktemp() do path, _
-            @test_throws ErrorException MachineId._read_file(path)
-        end
     end
 
     @testset "machine_id (integration)" begin
