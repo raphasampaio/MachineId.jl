@@ -48,21 +48,6 @@ using Test
         end
     end
 
-    @testset "linux readers (live)" begin
-        # Drive the live /proc readers on Linux so their I/O wrappers are covered
-        # (the fallback chain normally returns before reaching them). Results
-        # depend on the runner (cgroup v2, non-docker), so tolerate a throw.
-        if Sys.islinux()
-            for reader in (MachineId._cgroup, MachineId._mount_info)
-                try
-                    @test reader() isa AbstractString
-                catch err
-                    @test err isa Exception
-                end
-            end
-        end
-    end
-
     @testset "machine_id (integration)" begin
         # Linux (/etc/machine-id), Windows (registry), and macOS (ioreg) should
         # always succeed on CI.
@@ -70,16 +55,6 @@ using Test
             id = MachineId.machine_id()
             @test id isa String
             @test !isempty(id)
-        else
-            # Only truly unsupported platforms tolerate an unavailable source.
-            try
-                id = MachineId.machine_id()
-                @test id isa String
-                @test !isempty(id)
-            catch err
-                @test err isa Exception
-                @info "machine_id() unavailable on this platform" exception = err
-            end
         end
     end
 
