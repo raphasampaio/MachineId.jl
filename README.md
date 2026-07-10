@@ -28,7 +28,7 @@ machine_id()
 protected_id("Corp.SomeApp")
 ```
 
-Both functions throw an `ErrorException` (message prefixed with `machineid: `) if the machine id cannot be determined.
+Both functions throw if the machine id cannot be determined.
 
 ## Contributing
 

@@ -26,7 +26,7 @@ using Test
                 @test id isa String
                 @test !isempty(id)
             catch err
-                @test err isa ErrorException
+                @test err isa Exception
                 @info "machine_id() unavailable on this platform" exception = err
             end
         end

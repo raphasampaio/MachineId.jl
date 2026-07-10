@@ -18,34 +18,9 @@ function _read_file(path::AbstractString)
     return contents
 end
 
-function _first_valid_value(sources)
-    # Return the first source that yields a non-empty value; a source may throw or
-    # return "" to signal "unavailable".
-    for source in sources
-        try
-            value = source()
-            if !isempty(value)
-                return value
-            end
-        catch
-            continue
-        end
-    end
-    return error("no machine-id found")
-end
-
 function _cgroup()
-    # Read errors are swallowed (return ""); needs >= 3 "/"-separated segments.
-    try
-        contents = read("/proc/self/cgroup", String)
-        segments = split(contents, "/")
-        if length(segments) >= 3
-            return String(segments[3])
-        end
-        return ""
-    catch
-        return ""
-    end
+    # A missing/short read throws (IO / BoundsError) and is caught by the caller.
+    return String(split(read("/proc/self/cgroup", String), "/")[3])
 end
 
 function _mount_info()
@@ -61,13 +36,21 @@ function _mount_info()
 end
 
 function _machine_id_linux()
-    id = _first_valid_value((
+    # First source that yields a non-empty value wins; a source may throw or
+    # return "" to signal "unavailable".
+    for source in (
         () -> _read_file("/var/lib/dbus/machine-id"),
         () -> _read_file("/etc/machine-id"),
         _cgroup,
         _mount_info,
-    ))
-    return strip(id)
+    )
+        try
+            value = source()
+            isempty(value) || return strip(value)
+        catch
+        end
+    end
+    return error("no machine-id found")
 end
 
 function _machine_id_apple()
@@ -99,33 +82,24 @@ function _machine_id_windows()
     return error("could not read MachineGuid from registry")
 end
 
-function _machine_id()
-    if Sys.iswindows()
-        return _machine_id_windows()
-    elseif Sys.isapple()
-        return _machine_id_apple()
-    elseif Sys.islinux()
-        return _machine_id_linux()
-    else
-        return error("unsupported platform")
-    end
-end
-
 """
     machine_id() -> String
 
 Return the platform-native machine id (a GUID/UUID or dbus machine-id string),
 read from OS-native sources without any hardware fingerprinting.
 
-Throws an `ErrorException` (message prefixed with `machineid: `) if no id can be
-determined.
+Throws if the machine id cannot be determined (an `ErrorException`, or the
+underlying OS/IO error).
 """
 function machine_id()
-    try
-        return String(_machine_id())
-    catch err
-        message = err isa ErrorException ? err.msg : sprint(showerror, err)
-        return error("machineid: $message")
+    @static if Sys.iswindows()
+        return String(_machine_id_windows())
+    elseif Sys.isapple()
+        return String(_machine_id_apple())
+    elseif Sys.islinux()
+        return String(_machine_id_linux())
+    else
+        return error("unsupported platform")
     end
 end
 
