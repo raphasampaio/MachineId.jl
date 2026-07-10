@@ -18,13 +18,11 @@ function _read_file(path::AbstractString)
     return contents
 end
 
-function _cgroup()
-    # A missing/short read throws (IO / BoundsError) and is caught by the caller.
-    return String(split(read("/proc/self/cgroup", String), "/")[3])
-end
+# A missing/short read throws (IO / BoundsError) and is caught by the caller.
+_parse_cgroup(contents::AbstractString) = String(split(contents, "/")[3])
+_cgroup() = _parse_cgroup(read("/proc/self/cgroup", String))
 
-function _mount_info()
-    contents = read("/proc/self/mountinfo", String)
+function _parse_mount_info(contents::AbstractString)
     if !occursin("docker", contents)
         return error("environment is not a docker container")
     end
@@ -34,6 +32,7 @@ function _mount_info()
     end
     return String(m.captures[1])
 end
+_mount_info() = _parse_mount_info(read("/proc/self/mountinfo", String))
 
 function _machine_id_linux()
     # First source that yields a non-empty value wins; a source may throw or
@@ -53,8 +52,7 @@ function _machine_id_linux()
     return error("no machine-id found")
 end
 
-function _machine_id_apple()
-    output = read(`/usr/sbin/ioreg -rd1 -c IOPlatformExpertDevice`, String)
+function _parse_apple(output::AbstractString)
     for line in split(output, "\n")
         if occursin("IOPlatformUUID", line)
             m = match(r"\"IOPlatformUUID\"\s*=\s*\"([^\"]+)\"", line)
@@ -65,12 +63,12 @@ function _machine_id_apple()
     end
     return error("Failed to extract 'IOPlatformUUID' value from `ioreg` output.\n$output")
 end
+_machine_id_apple() = _parse_apple(read(`/usr/sbin/ioreg -rd1 -c IOPlatformExpertDevice`, String))
 
-function _machine_id_windows()
-    # Go reads the raw registry value (no trim); reg.exe output needs the column
-    # padding / trailing CR stripped, which yields the identical canonical GUID.
-    # `/reg:64` mirrors WOW64_64KEY; "REG_SZ" and "MachineGuid" are not localized.
-    output = read(`reg query "HKLM\SOFTWARE\Microsoft\Cryptography" /v MachineGuid /reg:64`, String)
+# Go reads the raw registry value (no trim); reg.exe output needs the column
+# padding / trailing CR stripped, which yields the identical canonical GUID.
+# "REG_SZ" and "MachineGuid" are not localized.
+function _parse_windows(output::AbstractString)
     for line in split(output, "\n")
         if occursin("MachineGuid", line)
             parts = split(line, "REG_SZ")
@@ -81,6 +79,9 @@ function _machine_id_windows()
     end
     return error("could not read MachineGuid from registry")
 end
+# `/reg:64` mirrors WOW64_64KEY so we read the native 64-bit view of the key.
+_machine_id_windows() =
+    _parse_windows(read(`reg query "HKLM\SOFTWARE\Microsoft\Cryptography" /v MachineGuid /reg:64`, String))
 
 """
     machine_id() -> String
