@@ -29,7 +29,7 @@ function _mount_info()
         return error("environment is not a docker container")
     end
     m = match(r"/docker/containers/([a-f0-9]+)/hostname", contents)
-    if m === nothing
+    if isnothing(m)
         return error("no docker mountinfo found")
     end
     return String(m.captures[1])
@@ -58,7 +58,7 @@ function _machine_id_apple()
     for line in split(output, "\n")
         if occursin("IOPlatformUUID", line)
             m = match(r"\"IOPlatformUUID\"\s*=\s*\"([^\"]+)\"", line)
-            if m !== nothing
+            if !isnothing(m)
                 return strip(m.captures[1])
             end
         end
