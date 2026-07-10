@@ -2,8 +2,6 @@ module MachineId
 
 using SHA
 
-export machine_id, protected_id
-
 function protect(app_id::AbstractString, id::AbstractString)
     # HMAC-SHA256 with KEY = machine id bytes, MESSAGE = app id bytes; lowercase hex.
     # Key must be a Vector{UInt8} (codeunits returns a read-only CodeUnits).
@@ -86,7 +84,7 @@ function machine_id_windows()
 end
 
 """
-    machine_id() -> String
+    raw() -> String
 
 Return the platform-native machine id (a GUID/UUID or dbus machine-id string),
 read from OS-native sources without any hardware fingerprinting.
@@ -94,7 +92,7 @@ read from OS-native sources without any hardware fingerprinting.
 Throws if the machine id cannot be determined (an `ErrorException`, or the
 underlying OS/IO error).
 """
-function machine_id()::String
+function raw()::String
     return @static if Sys.iswindows()
         machine_id_windows()
     elseif Sys.isapple()
@@ -107,14 +105,14 @@ function machine_id()::String
 end
 
 """
-    protected_id(app_id::AbstractString) -> String
+    protected(app_id::AbstractString) -> String
 
 Return an app-scoped, non-reversible machine id: the lowercase hex HMAC-SHA256 of
-`app_id` keyed by [`machine_id`](@ref) (64 characters). Use this instead of
-[`machine_id`](@ref) so the raw machine id never leaves the machine.
+`app_id` keyed by [`raw`](@ref) (64 characters). Use this instead of
+[`raw`](@ref) so the raw machine id never leaves the machine.
 """
-function protected_id(app_id::AbstractString)::String
-    return protect(app_id, machine_id())
+function protected(app_id::AbstractString)::String
+    return protect(app_id, raw())
 end
 
 end
