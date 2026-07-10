@@ -6,9 +6,7 @@
 
 ## Introduction
 
-MachineId.jl returns a stable, unique identifier for the host machine, read from OS-native sources (no hardware fingerprinting).
-
-It also provides `protected_id`, an app-scoped HMAC-SHA256 of the machine id, so you can identify a machine without ever exposing the raw id. This is a Julia portof the Go library [`keygen-sh/machineid`](https://github.com/keygen-sh/machineid).
+MachineId.jl returns a stable, unique identifier for the host machine, read from OS-native sources (no hardware fingerprinting). It also provides protected id, an app-scoped HMAC-SHA256 of the machine id, so you can identify a machine without ever exposing the raw id. This is a Julia portof the Go library [`keygen-sh/machineid`](https://github.com/keygen-sh/machineid).
 
 ## Getting Started
 
