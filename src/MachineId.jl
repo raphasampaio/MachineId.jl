@@ -10,18 +10,20 @@ function protect(app_id::AbstractString, id::AbstractString)
     return bytes2hex(hmac_sha256(Vector{UInt8}(id), app_id))
 end
 
-function parse_cgroup(contents::AbstractString) 
-return String(split(contents, "/")[3])
+function parse_cgroup(contents::AbstractString)
+    return String(split(contents, "/")[3])
 end
 
 function parse_mount_info(contents::AbstractString)
     if !occursin("docker", contents)
         return error("environment is not a docker container")
     end
+
     m = match(r"/docker/containers/([a-f0-9]+)/hostname", contents)
     if isnothing(m)
         return error("no docker mountinfo found")
     end
+
     return String(m.captures[1])
 end
 
@@ -36,7 +38,7 @@ function machine_id_linux()
     )
         try
             value = source()
-            if !isempty(value) 
+            if !isempty(value)
                 return strip(value)
             end
         catch
@@ -57,7 +59,7 @@ function parse_apple(output::AbstractString)
     return error("Failed to extract 'IOPlatformUUID' value from `ioreg` output.\n$output")
 end
 
-function machine_id_apple() 
+function machine_id_apple()
     return parse_apple(read(`/usr/sbin/ioreg -rd1 -c IOPlatformExpertDevice`, String))
 end
 
@@ -79,7 +81,7 @@ end
 # `/reg:64` mirrors WOW64_64KEY so we read the native 64-bit view of the key.
 function machine_id_windows()
     return parse_windows(
-        read(`reg query "HKLM\SOFTWARE\Microsoft\Cryptography" /v MachineGuid /reg:64`, String)
+        read(`reg query "HKLM\SOFTWARE\Microsoft\Cryptography" /v MachineGuid /reg:64`, String),
     )
 end
 
@@ -92,15 +94,15 @@ read from OS-native sources without any hardware fingerprinting.
 Throws if the machine id cannot be determined (an `ErrorException`, or the
 underlying OS/IO error).
 """
-function machine_id()
-    @static if Sys.iswindows()
-        return String(machine_id_windows())
+function machine_id()::String
+    return @static if Sys.iswindows()
+        machine_id_windows()
     elseif Sys.isapple()
-        return String(machine_id_apple())
+        machine_id_apple()
     elseif Sys.islinux()
-        return String(machine_id_linux())
+        machine_id_linux()
     else
-        return error("unsupported platform")
+        error("unsupported platform")
     end
 end
 
@@ -111,7 +113,7 @@ Return an app-scoped, non-reversible machine id: the lowercase hex HMAC-SHA256 o
 `app_id` keyed by [`machine_id`](@ref) (64 characters). Use this instead of
 [`machine_id`](@ref) so the raw machine id never leaves the machine.
 """
-function protected_id(app_id::AbstractString)
+function protected_id(app_id::AbstractString)::String
     return protect(app_id, machine_id())
 end
 
