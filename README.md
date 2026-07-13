@@ -21,10 +21,10 @@ pkg> add MachineId
 ```julia
 using MachineId
 
-# The raw machine id (e.g. "23339b15-c1ee-4011-a1d3-88aab8a341d3")
+# The raw machine id
 @show MachineId.raw()
 
-# An app-scoped id that never exposes the raw machine id (64-char lowercase hex)
+# An app-scoped id that never exposes the raw machine id
 @show MachineId.protected("Corp.SomeApp")
 ```
 
